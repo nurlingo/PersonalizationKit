@@ -176,7 +176,7 @@ public class LearnerService {
                 let merged = mergeLearners(local: localLearner, remote: fetchedRemote)
                 self.localLearner = merged
                 saveLocalLearner()  // persist the merged result
-                NotificationCenter.default.post(Notification(name: Notification.Name("UpdateUI")))
+                NotificationCenter.default.post(Notification(name: Notification.Name("reload_app_data")))
 
                 // If desired, update the server with the merged version
                 // (so the server also picks up local changes on non-overridden properties)
