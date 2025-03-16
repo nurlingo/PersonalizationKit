@@ -108,8 +108,16 @@ public class LearnerService {
             if let predefinedAnalyticsId {
                 self.localLearner?.id = predefinedAnalyticsId
             }
+            
+            #if DEBUG
+            print("Retrieved local learner with id: \(localLearner.id), lowercase: \(localLearner.id.uuidString.lowercased())")
+            #endif
+            
         } else if let appBuildVersion = Bundle.main.infoDictionary?["CFBundleVersion"] as? String {
             self.localLearner = Learner(id: predefinedAnalyticsId ?? UUID(), properties: ["bundleVersionAtInstall": appBuildVersion])
+            #if DEBUG
+            print("Created a new local learner with id: \(localLearner?.id.uuidString ?? "NO ID"), lowercase: \(localLearner?.id.uuidString.lowercased() ?? "NO ID")")
+            #endif
         } else {
             print(#function, "error creating a learner")
         }
@@ -170,7 +178,9 @@ public class LearnerService {
         Task {
             do {
                 let fetchedRemote = try await self.getRemoteLearner(localLearner.id.uuidString.lowercased())
-                print("Fetched remote learner:", fetchedRemote)
+                #if DEBUG
+                print("Fetched remote learner:", String(describing: fetchedRemote))
+                #endif
                 
                 // Merge remote -> local, respecting override flags
                 let merged = mergeLearners(local: localLearner, remote: fetchedRemote)
@@ -181,7 +191,9 @@ public class LearnerService {
                 // If desired, update the server with the merged version
                 // (so the server also picks up local changes on non-overridden properties)
                 if merged != fetchedRemote {
-//                    print("Updating remote \(merged.id), lowercase: \(merged.id.uuidString.lowercased()) with merged data.")
+                    #if DEBUG
+                    print("Updating remote learner...")
+                    #endif
                     let updatedRemote = try await updateRemoteLearner()
                     self.remoteLearner = updatedRemote
                 } else {
