@@ -140,14 +140,6 @@ public class ActivityService {
         do {
             let requestBody = try JSONEncoder().encode(activitiesToBeLogged)
             request.httpBody = requestBody
-            
-            // For debugging: print the JSON payload
-            if let jsonString = String(data: requestBody, encoding: .utf8) {
-                #if DEBUG
-                print("Request JSON Payload:", jsonString)
-                #endif
-                
-            }
         } catch {
             #if DEBUG
             print("Failed to encode the activityLog:", error.localizedDescription)
@@ -169,8 +161,10 @@ public class ActivityService {
             for log in activityLogs {
                 StorageDelegate.learnerStorage.store(true, forKey: "\(log.id)")
             }
-            
-            print(#function, "activities logged to remote history") //:", activityLogs)
+            #if DEBUG
+            print(#function, "activities logged to remote history:", activityLogs.count)
+            #endif
+
             return activityLogs
         } catch {
             // Handle other errors
