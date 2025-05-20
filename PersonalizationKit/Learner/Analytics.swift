@@ -52,4 +52,7 @@ public class Analytics: NSObject {
         LearnerService.shared.setLearnerProperty("\(value)", forKey: property)
     }
     
+    public func getUserProperty(_ property: String) -> String? {
+        LearnerService.shared.localLearner?.getProperty(property)
+    }
 }
