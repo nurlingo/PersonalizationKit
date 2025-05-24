@@ -36,7 +36,7 @@ public class Analytics: NSObject {
     
     public func logActivity(_ activityId: String, type: String, value: String? = nil, startDate: Date = Date(), completionDate: Date = Date()) {
         #if DEBUG
-        print("log:", type, "->", activityId, "->", value?.prefix(30) ?? "nil", "| startDate:", startDate)
+        print("📟 log:", type, "->", activityId, "->", value?.prefix(30) ?? "nil", "| startDate:", startDate)
         #endif
         
         if let activityLog = ActivityLog(activityId: activityId, type: type, value: value, startDate: startDate, completionDate: completionDate, buildVersion: StorageDelegate.learnerStorage.currentAppVersion) {
@@ -46,7 +46,7 @@ public class Analytics: NSObject {
     
     public func setUserProperty(_ property: String, value: Any) {
         #if DEBUG
-        print("setUserProperty:", property, "| value:", "\(value)")
+        print("💼 setUserProperty:", property, "| value:", "\(value)")
         #endif
         
         LearnerService.shared.setLearnerProperty("\(value)", forKey: property)

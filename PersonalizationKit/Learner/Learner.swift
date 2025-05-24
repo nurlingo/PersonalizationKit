@@ -110,16 +110,16 @@ public class LearnerService {
             }
             
             #if DEBUG
-            print("Retrieved local learner with id: \(localLearner.id), lowercase: \(localLearner.id.uuidString.lowercased())")
+            print("🎓 Retrieved local learner with id: \(localLearner.id), lowercase: \(localLearner.id.uuidString.lowercased())")
             #endif
             
         } else if let appBuildVersion = Bundle.main.infoDictionary?["CFBundleVersion"] as? String {
             self.localLearner = Learner(id: predefinedAnalyticsId ?? UUID(), properties: ["bundleVersionAtInstall": appBuildVersion])
             #if DEBUG
-            print("Created a new local learner with id: \(localLearner?.id.uuidString ?? "NO ID"), lowercase: \(localLearner?.id.uuidString.lowercased() ?? "NO ID")")
+            print("🎓 Created a new local learner with id: \(localLearner?.id.uuidString ?? "NO ID"), lowercase: \(localLearner?.id.uuidString.lowercased() ?? "NO ID")")
             #endif
         } else {
-            print(#function, "error creating a learner")
+            print("🎓", #function, "error creating a learner")
         }
         saveLocalLearner()
     }
@@ -143,7 +143,7 @@ public class LearnerService {
             let data = try encoder.encode(learner)
             StorageDelegate.learnerStorage.store(data, forKey: userDefaultsKey)
         } catch {
-            print("Error encoding learner: \(error)")
+            print("🎓 Error encoding learner: \(error)")
             return
         }
         
@@ -162,7 +162,7 @@ public class LearnerService {
                 do {
                     LearnerService.shared.remoteLearner = try await LearnerService.shared.updateRemoteLearner()
                 } catch {
-                    print(#function, "error updating remote learner: \(error.localizedDescription)")
+                    print("🎓", #function, "error updating remote learner: \(error.localizedDescription)")
                 }
             }
         }
@@ -171,7 +171,7 @@ public class LearnerService {
     @available(iOS 13.0, *)
     public func kickstartRemoteLearner() {
         guard let localLearner = self.localLearner else {
-            print(#function, "error: no local learner")
+            print("🎓", #function, "error: no local learner")
             return
         }
 
@@ -179,7 +179,7 @@ public class LearnerService {
             do {
                 let fetchedRemote = try await self.getRemoteLearner(localLearner.id.uuidString.lowercased())
                 #if DEBUG
-                print("Fetched remote learner:", String(describing: fetchedRemote))
+                print("🎓 Fetched remote learner:", String(describing: fetchedRemote))
                 #endif
                 
                 // Merge remote -> local, respecting override flags
@@ -192,7 +192,7 @@ public class LearnerService {
                 // (so the server also picks up local changes on non-overridden properties)
                 if merged != fetchedRemote {
                     #if DEBUG
-                    print("Updating remote learner...")
+                    print("🎓 Updating remote learner...")
                     #endif
                     let updatedRemote = try await updateRemoteLearner()
                     self.remoteLearner = updatedRemote
@@ -204,7 +204,7 @@ public class LearnerService {
                 do {
                     self.remoteLearner = try await self.createRemoteLearner()
                 } catch {
-                    print(#function, "error creating remote learner:", error.localizedDescription)
+                    print("🎓", #function, "error creating remote learner:", error.localizedDescription)
                 }
             }
         }
@@ -214,7 +214,7 @@ public class LearnerService {
     public func createRemoteLearner() async throws -> Learner {
         
         guard let learner = self.localLearner else {
-            print(#function, "Error learner update failed: local learner is nil")
+            print("🎓", #function, "Error learner update failed: local learner is nil")
             throw ServiceError.missingInput
         }
         
@@ -232,7 +232,7 @@ public class LearnerService {
             let requestBody = try JSONEncoder().encode(learner)
             request.httpBody = requestBody
         } catch {
-            print("Failed to encode learner: \(error)")
+            print("🎓 Failed to encode learner: \(error)")
         }
         
         do {
@@ -247,7 +247,7 @@ public class LearnerService {
             return learner
         } catch {
             // Handle other errors
-            print(#function, "error creating remote learner: \(error.localizedDescription)")
+            print("🎓", #function, "error creating remote learner: \(error.localizedDescription)")
             throw error
         }
     }
@@ -260,7 +260,7 @@ public class LearnerService {
         do {
             return try JSONDecoder().decode(Learner.self, from: learnerData)
         } catch {
-            print("Error decoding learner: \(error)")
+            print("🎓 Error decoding learner: \(error)")
             return nil
         }
     }
@@ -269,7 +269,7 @@ public class LearnerService {
     public func getRemoteLearner(_ id: String) async throws -> Learner {
         /// FIXME can it get the learner from firestore? ≥,fdscaxz
         guard let url = URL(string: "\(learnerUrl)/\(id)") else {
-            print(#function, "Failed URL initialization")
+            print("🎓", #function, "Failed URL initialization")
             throw ServiceError.failedURLInitialization
         }
         
@@ -280,19 +280,19 @@ public class LearnerService {
             let (data, response) = try await URLSession.shared.data(for: request)
             
             guard let httpResponse = response as? HTTPURLResponse else {
-                print(#function, "failed response initialization")
+                print("🎓", #function, "failed response initialization")
                 throw ServiceError.failedResponseInitialization
             }
             
             guard (200...299).contains(httpResponse.statusCode) else {
-                print(#function, "Request failed with \(httpResponse.statusCode)")
+                print("🎓", #function, "Request failed with \(httpResponse.statusCode)")
                 throw ServiceError.requestFailed
             }
             
             //                print(String(data: data, encoding: .utf8))
             
             guard let remoteLearner = try? JSONDecoder().decode(Learner.self, from: data) else {
-                print(#function, "Failed to initilize learner from data:", String(decoding: data, as: UTF8.self))
+                print("🎓", #function, "Failed to initilize learner from data:", String(decoding: data, as: UTF8.self))
                 throw ServiceError.decodingFailed
             }
             
@@ -302,7 +302,7 @@ public class LearnerService {
             
         } catch {
             // Handle other errors
-            print(#function, "error getting the remote learner: \(error.localizedDescription)")
+            print("🎓", #function, "error getting the remote learner: \(error.localizedDescription)")
             throw error
         }
     }
@@ -342,7 +342,7 @@ public class LearnerService {
     public func updateRemoteLearner() async throws -> Learner {
                 
         guard let learner = self.localLearner else {
-            print(#function, "Error learner update failed: local learner is nil")
+            print("🎓", #function, "Error learner update failed: local learner is nil")
             throw ServiceError.missingInput
         }
         
@@ -360,19 +360,19 @@ public class LearnerService {
             let requestBody = try encoder.encode(learner)
             request.httpBody = requestBody
         } catch {
-            print("Failed to encode learner: \(error)")
+            print("🎓 Failed to encode learner: \(error)")
             throw ServiceError.encodingFailed
         }
         
         do {
             let (data, response) = try await URLSession.shared.data(for: request)
             guard let httpResponse = response as? HTTPURLResponse else {
-                print(#function, "failed response initialization")
+                print("🎓", #function, "failed response initialization")
                 throw ServiceError.failedResponseInitialization
             }
             
             guard (200...299).contains(httpResponse.statusCode) else {
-                print(#function, "Request failed with \(httpResponse.statusCode)")
+                print("🎓", #function, "Request failed with \(httpResponse.statusCode)")
                 throw ServiceError.requestFailed
             }
             
@@ -385,7 +385,7 @@ public class LearnerService {
             return updatedLearner
         } catch {
             // Handle other errors
-            print("failed to update remote learner")
+            print("🎓 failed to update remote learner")
             throw error
         }
     }

@@ -42,7 +42,7 @@ extension ServiceError: LocalizedError {
 
 @available(iOS 10.0, *)
 public class ActivityService {
-
+    
     public static var shared = ActivityService()
     
     public var localActivityHistory: [ActivityLog]? {
@@ -50,7 +50,7 @@ public class ActivityService {
             saveLocalHistory()
         }
     }
-
+    
     private lazy var analyticsUrl = "\(StorageDelegate.learnerStorage.serverUrl)/analytics/\(StorageDelegate.learnerStorage.activtyLogCollectionName)"
     private let userDefaultsKey = "engagement_history"
     
@@ -63,9 +63,9 @@ public class ActivityService {
         }
         
         self.localActivityHistory = localHistory
-        #if DEBUG
+#if DEBUG
         print("localActivityHistory:", localHistory.count)
-        #endif
+#endif
     }
     
     @available(iOS 13.0, *)
@@ -141,9 +141,9 @@ public class ActivityService {
             let requestBody = try JSONEncoder().encode(activitiesToBeLogged)
             request.httpBody = requestBody
         } catch {
-            #if DEBUG
+#if DEBUG
             print("Failed to encode the activityLog:", error.localizedDescription)
-            #endif
+#endif
         }
         
         do {
@@ -161,70 +161,11 @@ public class ActivityService {
             for log in activityLogs {
                 StorageDelegate.learnerStorage.store(true, forKey: "\(log.id)")
             }
-            #if DEBUG
+#if DEBUG
             print(#function, "activities logged to remote history:", activityLogs.count)
-            #endif
-
+#endif
+            
             return activityLogs
-        } catch {
-            // Handle other errors
-            throw error
-        }
-        
-    }
-    
-    
-    @available(iOS 13.0.0, *)
-    public func getAssessmentResults() async throws -> Assessment {
-        
-        var activitiesToBeLogged: [ActivityLog] = []
-        
-        for localLog in localActivityHistory?.sorted(by: {$0.startDate ?? Date() < $1.startDate ?? Date()}) ?? [] {
-            
-            if localLog.type != "shape" && localLog.type != "sound"  {
-                /// skipping item as it was already marked as reported
-                continue
-            }
-            
-            activitiesToBeLogged.append(localLog)
-        }
-        
-        
-        if activitiesToBeLogged.count < 1 {
-            /// too few new logs, no need to upload yet.
-            throw ServiceError.missingInput
-        }
-        
-        /// add to remote history
-        guard let url = URL(string: analyticsUrl+"/assessment") else {
-            throw ServiceError.failedURLInitialization
-        }
-        
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.addValue("application/json", forHTTPHeaderField: "Content-Type")
-        
-        do {
-            let requestBody = try JSONEncoder().encode(activitiesToBeLogged)
-            request.httpBody = requestBody
-        } catch {
-            print("Failed to encode the activityLog: \(error.localizedDescription)")
-        }
-        
-        do {
-            let (data, response) = try await URLSession.shared.data(for: request)
-            guard let httpResponse = response as? HTTPURLResponse,
-                  (200...299).contains(httpResponse.statusCode) else {
-                print(#function, "Failed with response: \( (response as? HTTPURLResponse)?.statusCode ?? 0 )") //, String(data: data, encoding: .utf8) ?? "")
-                throw ServiceError.requestFailed
-            }
-            
-            guard let assessment = try? JSONDecoder().decode(Assessment.self, from: data) else {
-                print(#function, "Failed to decode", String(data: data, encoding: .utf8) ?? "")
-                throw ServiceError.decodingFailed
-            }
-            
-            return assessment
         } catch {
             // Handle other errors
             throw error
@@ -235,7 +176,7 @@ public class ActivityService {
     @available(iOS 13.0.0, *)
     @discardableResult
     public func logSingleActivitiesToRemoteHistory(_ localActivity: ActivityLog) async throws -> ActivityLog {
-            
+        
         /// add to remote history
         guard let url = URL(string: analyticsUrl) else {
             throw ServiceError.failedURLInitialization
@@ -267,7 +208,7 @@ public class ActivityService {
             throw ServiceError.decodingFailed
         }
     }
-
+    
     
     private func saveLocalHistory() {
         
@@ -277,7 +218,7 @@ public class ActivityService {
         }
         
         let encoder = JSONEncoder()
-
+        
         do {
             let data = try encoder.encode(localActivitiesHistory)
             StorageDelegate.learnerStorage.store(data, forKey: userDefaultsKey)
@@ -290,9 +231,9 @@ public class ActivityService {
         guard let localHistoryData = StorageDelegate.learnerStorage.retrieve(forKey: userDefaultsKey) as? Data else {
             return nil
         }
-
+        
         let decoder = JSONDecoder()
-
+        
         do {
             return try decoder.decode([ActivityLog].self, from: localHistoryData)
         } catch {
@@ -312,12 +253,12 @@ public class ActivityService {
         guard let localActivityHistory = localActivityHistory else {
             return nil
         }
-
+        
         // Filter activity logs
         let activityLogs = localActivityHistory.filter {
             $0.activityId == activityId && (type == nil || $0.type == type) && (value == nil || $0.value == value)
         }
-
+        
         if !activityLogs.isEmpty {
             // Safely handle logic
             switch logic {
@@ -331,7 +272,7 @@ public class ActivityService {
                 return activityLogs.min { (Decimal(string: $0.value ?? "") ?? 0) < Decimal(string: $1.value ?? "") ?? 0 }
             }
         }
-
+        
         return nil
     }
     
@@ -362,5 +303,31 @@ public class ActivityService {
         
         return localActivityHistory
     }
-
+    
+    /// Returns a merged profile of learner.properties + [activityId: maxValue]
+    public func getSummary() -> [String: String] {
+        
+        guard let localActivityHistory = localActivityHistory else {
+            return [:]
+        }
+        
+        // Group logs by activityId
+        let grouped = Dictionary(grouping: localActivityHistory, by: \.activityId)
+        
+        // For each group, pick the max value
+        let maxValuesByActivityId: [String:String] = grouped.compactMapValues { logs in
+            // 1) Try numeric comparison
+            let numericValues = logs.compactMap { log in
+                log.value.flatMap(Double.init)
+            }
+            if let maxNum = numericValues.max() {
+                return String(maxNum)
+            }
+            // 2) Fallback to lexicographical string max
+            return logs.compactMap { $0.value }.max()
+        }
+        
+        return maxValuesByActivityId
+    }
+    
 }
