@@ -13,6 +13,7 @@ public protocol LearnerStorage {
     var learnerCollectionName: String {get}
     var activtyLogCollectionName: String {get}
     var currentAppVersion: String? {get}
+    var currentSessionNumber: Int? {get}
     
     func store(_ anyObject: Any, forKey key: String)
     

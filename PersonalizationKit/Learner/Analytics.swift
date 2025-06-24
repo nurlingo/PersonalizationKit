@@ -39,7 +39,7 @@ public class Analytics: NSObject {
         print("📟 log:", type, "->", activityId, "->", value?.prefix(30) ?? "nil", "| startDate:", startDate)
         #endif
         
-        if let activityLog = ActivityLog(activityId: activityId, type: type, value: value, startDate: startDate, completionDate: completionDate, buildVersion: StorageDelegate.learnerStorage.currentAppVersion) {
+        if let activityLog = ActivityLog(activityId: activityId, type: type, value: value, startDate: startDate, completionDate: completionDate, buildVersion: StorageDelegate.learnerStorage.currentAppVersion, sessionNumber: StorageDelegate.learnerStorage.currentSessionNumber) {
             ActivityService.shared.logActivityToHistory(activityLog)
         }
     }
