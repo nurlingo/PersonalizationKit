@@ -49,7 +49,12 @@ public class Analytics: NSObject {
         print("💼 setUserProperty:", property, "| value:", "\(value)")
         #endif
         
-        LearnerService.shared.setLearnerProperty("\(value)", forKey: property)
+        if let value = value as? Bool {
+            LearnerService.shared.setLearnerProperty(value ? "1" : "0", forKey: property)
+        } else {
+            LearnerService.shared.setLearnerProperty("\(value)", forKey: property)
+        }
+        
     }
     
     public func getUserProperty(_ property: String) -> String? {
