@@ -249,7 +249,7 @@ public class ActivityService {
         case last
     }
     
-    public func getActivity(activityId: String, type: String? = nil, value: String? = nil, logic: ValueLogic = .last) -> ActivityLog? {
+    public func getActivity(activityId: String, type: String? = nil, value: String? = nil, logic: ValueLogic = .max) -> ActivityLog? {
         guard let localActivityHistory = localActivityHistory else {
             return nil
         }
