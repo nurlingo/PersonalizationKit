@@ -86,6 +86,9 @@ extension Learner: Equatable {
 import Foundation
 
 public class LearnerService {
+    
+    private let bundleVersionAtInstallKey = "bundleVersionAtInstall"
+    private let bundleVersionAtInstallBackupKey = "install_build_backup"
 
     public static var shared = LearnerService()
     
@@ -101,26 +104,42 @@ public class LearnerService {
     private var lastLearnerUpdateAttempt: Date?
     private lazy var learnerUrl = "\(StorageDelegate.learnerStorage.serverUrl)/learner/\(StorageDelegate.learnerStorage.learnerCollectionName)"
     
+    private func backupInstallBuildIfPresent() {
+        if let v = localLearner?.getProperty(bundleVersionAtInstallKey), !v.isEmpty {
+            StorageDelegate.learnerStorage.store(v, forKey: bundleVersionAtInstallBackupKey)
+        }
+    }
+    
     public func kickstartLocalLearner(predefinedAnalyticsId: UUID? = nil) {
         
-        if let localLearner = retrieveLocalLearner() {
-            self.localLearner = localLearner
-            if let predefinedAnalyticsId {
-                self.localLearner?.id = predefinedAnalyticsId
-            }
+        if let local = retrieveLocalLearner() {
+            self.localLearner = local
+            if let id = predefinedAnalyticsId { self.localLearner?.id = id }
+            // Preserve current install build
+            backupInstallBuildIfPresent()
             
             #if DEBUG
-            print("🎓 Retrieved local learner with id: \(localLearner.id), lowercase: \(localLearner.id.uuidString.lowercased())")
+            print("🎓 Retrieved local learner with id: \(local.id), lowercase: \(local.id.uuidString.lowercased())")
             #endif
             
-        } else if let appBuildVersion = Bundle.main.infoDictionary?["CFBundleVersion"] as? String {
-            self.localLearner = Learner(id: predefinedAnalyticsId ?? UUID(), properties: ["bundleVersionAtInstall": appBuildVersion])
+        } else {
+            // Learner missing/undecodable → create new, but try to restore preserved install build
+            let props: [String:String]
+            if let preserved = StorageDelegate.learnerStorage.retrieve(forKey: bundleVersionAtInstallBackupKey) as? String, !preserved.isEmpty {
+                props = [bundleVersionAtInstallKey: preserved]
+            } else if let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String {
+                props = [bundleVersionAtInstallKey: build]
+                StorageDelegate.learnerStorage.store(build, forKey: bundleVersionAtInstallBackupKey)
+            } else {
+                props = [:]
+            }
+            self.localLearner = Learner(id: predefinedAnalyticsId ?? UUID(), properties: props)
+            
             #if DEBUG
             print("🎓 Created a new local learner with id: \(localLearner?.id.uuidString ?? "NO ID"), lowercase: \(localLearner?.id.uuidString.lowercased() ?? "NO ID")")
             #endif
-        } else {
-            print("🎓", #function, "error creating a learner")
         }
+        
         saveLocalLearner()
     }
     
