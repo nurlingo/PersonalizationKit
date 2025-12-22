@@ -45,9 +45,16 @@ public class ActivityService {
     
     public static var shared = ActivityService()
     
+    /// Access to activity history must be serialized.
+    /// This service is called from UI + async Task contexts; unsynchronized mutations can crash at runtime.
+    private let historyQueue = DispatchQueue(label: "PersonalizationKit.ActivityService.historyQueue", qos: .utility)
+    private var _localActivityHistory: [ActivityLog]?
+    
     public var localActivityHistory: [ActivityLog]? {
-        didSet {
-            saveLocalHistory()
+        get { historyQueue.sync { _localActivityHistory } }
+        set {
+            historyQueue.sync { _localActivityHistory = newValue }
+            saveLocalHistory(snapshot: newValue)
         }
     }
     
@@ -81,24 +88,35 @@ public class ActivityService {
     }
     
     public func logActivityToHistory(_ activityLog: ActivityLog) {
-        /// add to local history
-        if let localHistory = localActivityHistory,
-           !localHistory.contains(where: {$0.id == activityLog.id}) {
-            self.localActivityHistory?.append(activityLog)
-            
-            if #available(iOS 13.0, *) {
-                Task {
-                    do {
-                        try await self.logSingleActivitiesToRemoteHistory(activityLog)
-                        StorageDelegate.learnerStorage.store(true, forKey: "\(activityLog.id)")
-                    } catch {
-                        print("failed to log a single activity: ", error.localizedDescription)
-                    }
+        var didAppend = false
+        var snapshotToSave: [ActivityLog]?
+        
+        historyQueue.sync {
+            if _localActivityHistory == nil { _localActivityHistory = [] }
+            guard _localActivityHistory?.contains(where: { $0.id == activityLog.id }) == false else {
+                return
+            }
+            _localActivityHistory?.append(activityLog)
+            didAppend = true
+            snapshotToSave = _localActivityHistory
+        }
+        
+        guard didAppend else {
+            print("Error adding history log: either the history is nil or item has been previously added. Local history:", localActivityHistory ?? "nil")
+            return
+        }
+        
+        saveLocalHistory(snapshot: snapshotToSave)
+        
+        if #available(iOS 13.0, *) {
+            Task {
+                do {
+                    try await self.logSingleActivitiesToRemoteHistory(activityLog)
+                    StorageDelegate.learnerStorage.store(true, forKey: "\(activityLog.id)")
+                } catch {
+                    print("failed to log a single activity: ", error.localizedDescription)
                 }
             }
-            
-        } else {
-            print("Error adding history log: either the history is nil or item has been previously added. Local history:", localActivityHistory ?? "nil")
         }
     }
     
@@ -107,7 +125,9 @@ public class ActivityService {
         
         var activitiesToBeLogged: [ActivityLog] = []
         
-        for localLog in localActivityHistory?.sorted(by: {$0.startDate ?? Date() < $1.startDate ?? Date()}) ?? [] {
+        let historySnapshot = historyQueue.sync { _localActivityHistory } ?? []
+        
+        for localLog in historySnapshot.sorted(by: { $0.startDate ?? Date() < $1.startDate ?? Date() }) {
             
             if StorageDelegate.learnerStorage.retrieve(forKey: "\(localLog.id)") as? Bool ?? false {
                 /// skipping item as it was already marked as reported
@@ -210,9 +230,8 @@ public class ActivityService {
     }
     
     
-    private func saveLocalHistory() {
-        
-        guard let localActivitiesHistory = self.localActivityHistory else {
+    private func saveLocalHistory(snapshot: [ActivityLog]?) {
+        guard let localActivitiesHistory = snapshot else {
             print(#function, "Error localActivitiesHistory is nil")
             return
         }
@@ -250,7 +269,8 @@ public class ActivityService {
     }
     
     public func getActivity(activityId: String, type: String? = nil, value: String? = nil, logic: ValueLogic = .max) -> ActivityLog? {
-        guard let localActivityHistory = localActivityHistory else {
+        let localActivityHistory = historyQueue.sync { _localActivityHistory }
+        guard let localActivityHistory else {
             return nil
         }
         
@@ -277,7 +297,8 @@ public class ActivityService {
     }
     
     public func getActivities(of types: [String]) -> [ActivityLog]? {
-        guard let localActivityHistory = localActivityHistory else {
+        let localActivityHistory = historyQueue.sync { _localActivityHistory }
+        guard let localActivityHistory else {
             return nil
         }
         
@@ -285,7 +306,8 @@ public class ActivityService {
     }
     
     public func getAllInstances(_ activityId: String? = nil, type: String? = nil, value: String? = nil) -> [ActivityLog] {
-        guard var localActivityHistory = localActivityHistory else {
+        let localActivityHistorySnapshot = historyQueue.sync { _localActivityHistory }
+        guard var localActivityHistory = localActivityHistorySnapshot else {
             return []
         }
         
@@ -307,7 +329,8 @@ public class ActivityService {
     /// Returns a merged profile of learner.properties + [activityId: maxValue]
     public func getSummary() -> [String: String] {
         
-        guard let localActivityHistory = localActivityHistory else {
+        let localActivityHistory = historyQueue.sync { _localActivityHistory }
+        guard let localActivityHistory else {
             return [:]
         }
         
