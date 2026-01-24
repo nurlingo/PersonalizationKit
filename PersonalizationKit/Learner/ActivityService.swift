@@ -54,7 +54,9 @@ public class ActivityService {
         get { historyQueue.sync { _localActivityHistory } }
         set {
             historyQueue.sync { _localActivityHistory = newValue }
-            saveLocalHistory(snapshot: newValue)
+            historyQueue.async { [weak self] in
+                self?.saveLocalHistory(snapshot: newValue)
+            }
         }
     }
     
@@ -65,11 +67,11 @@ public class ActivityService {
         
         guard let localHistory = retrieveLocalHistory() else {
             print(#function, "error getting local history")
-            self.localActivityHistory = []
+            historyQueue.sync { _localActivityHistory = [] }
             return
         }
         
-        self.localActivityHistory = localHistory
+        historyQueue.sync { _localActivityHistory = localHistory }
 #if DEBUG
         print("localActivityHistory:", localHistory.count)
 #endif
@@ -106,7 +108,9 @@ public class ActivityService {
             return
         }
         
-        saveLocalHistory(snapshot: snapshotToSave)
+        historyQueue.async { [weak self] in
+            self?.saveLocalHistory(snapshot: snapshotToSave)
+        }
         
         if #available(iOS 13.0, *) {
             Task {
