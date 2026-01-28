@@ -346,3 +346,50 @@ import com.yourapp.personalization.PersonalizationKit
 // New
 import com.personalizationkit.PersonalizationKit
 ```
+
+---
+
+## Android Parity TODO
+
+The following iOS features need Android implementation:
+
+### Activity Logging (Missing in Android)
+
+| Activity | Type | When to Log | Priority |
+|----------|------|-------------|----------|
+| `background` | `event` | App goes to background | High |
+| `foreground` | `event` | App comes to foreground | High |
+| `terminated` | `event` | App terminated | Medium |
+| `notification_tap_{id}` | `notification` | User taps notification | Medium |
+| `notification_received_{id}` | `notification` | Notification delivered | Low |
+| `recording_{itemId}` | `audio_recording` | Audio recording completed | Medium |
+| `recitation_{trackId}` | `recitation_check` | Recitation check result | Medium |
+| `{itemId}` | `booking` | Booking made | Low |
+| `{itemId}` | `cancel_booking` | Booking cancelled | Low |
+| `share` | `event` | Content shared | Low |
+| `onboarding` | `event` | Onboarding completed | Medium |
+| `go_to_settings_enable_location` | `event` | Location permission prompt | Low |
+| `recommended_item_selected` | `event` | Recommendation clicked | Low |
+
+### User Properties (Verify Android Sets These)
+
+| Property | When Set | Priority |
+|----------|----------|----------|
+| `gender` | Initial setup / settings | High |
+| `language` | Initial setup / settings | High |
+| `premium` | After purchase | High |
+| `apns_token` / `fcm_token` | On token refresh | High |
+| `current_bundle_version` | On app launch | Medium |
+| `country_code` | On location obtained | Medium |
+| `city` | On location obtained | Medium |
+| `text_size` | On preference change | Low |
+| `play_speed` | On preference change | Low |
+
+### Activity Reading (Verify Android Implements)
+
+| Use Case | Query | Priority |
+|----------|-------|----------|
+| Check lesson completion | `getActivity(id, type)?.value == "1"` | High |
+| Check prerequisite | `getActivity(prerequisiteId, logic: .max)` | High |
+| Check if item opened | `getActivity(id, type) != nil` | Medium |
+| Get progress value | `getActivity(id, type, logic: .max)?.value` | Medium |
