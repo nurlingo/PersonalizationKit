@@ -349,47 +349,56 @@ import com.personalizationkit.PersonalizationKit
 
 ---
 
-## Android Parity TODO
+## Android Parity Status
 
-The following iOS features need Android implementation:
+### Activity Logging
 
-### Activity Logging (Missing in Android)
+| Activity | Type | Status | Notes |
+|----------|------|--------|-------|
+| `background` | `event` | ✅ Done | NamazApp.kt via ProcessLifecycleOwner |
+| `foreground` | `event` | ✅ Done | NamazApp.kt via ProcessLifecycleOwner |
+| `onboarding` | `event` | ✅ Done | FirstLaunchViewModel.kt |
+| `launch` | `event` | ✅ Done | NamazApp.kt via incrementLaunchCount() |
+| `terminated` | `event` | ⚠️ N/A | Android doesn't reliably detect termination |
+| `notification_tap_{id}` | `notification` | ❌ TODO | Add in notification handler |
+| `notification_received_{id}` | `notification` | ❌ TODO | Add in FCM service |
+| `recording_{itemId}` | `audio_recording` | ❌ TODO | Feature not in Android yet |
+| `recitation_{trackId}` | `recitation_check` | ❌ TODO | Feature not in Android yet |
+| `{itemId}` | `booking` | ❌ TODO | Feature not in Android yet |
+| `{itemId}` | `cancel_booking` | ❌ TODO | Feature not in Android yet |
+| `share` | `event` | ❌ TODO | Add in share handler |
+| `go_to_settings_enable_location` | `event` | ❌ TODO | Low priority |
+| `recommended_item_selected` | `event` | ❌ TODO | Low priority |
 
-| Activity | Type | When to Log | Priority |
-|----------|------|-------------|----------|
-| `background` | `event` | App goes to background | High |
-| `foreground` | `event` | App comes to foreground | High |
-| `terminated` | `event` | App terminated | Medium |
-| `notification_tap_{id}` | `notification` | User taps notification | Medium |
-| `notification_received_{id}` | `notification` | Notification delivered | Low |
-| `recording_{itemId}` | `audio_recording` | Audio recording completed | Medium |
-| `recitation_{trackId}` | `recitation_check` | Recitation check result | Medium |
-| `{itemId}` | `booking` | Booking made | Low |
-| `{itemId}` | `cancel_booking` | Booking cancelled | Low |
-| `share` | `event` | Content shared | Low |
-| `onboarding` | `event` | Onboarding completed | Medium |
-| `go_to_settings_enable_location` | `event` | Location permission prompt | Low |
-| `recommended_item_selected` | `event` | Recommendation clicked | Low |
+### User Properties
 
-### User Properties (Verify Android Sets These)
+| Property | Status | Notes |
+|----------|--------|-------|
+| `gender` | ✅ Done | FirstLaunchViewModel, SettingsViewModel |
+| `language` | ✅ Done | FirstLaunchViewModel, SettingsViewModel |
+| `launch_count` | ✅ Done | NamazApp.kt via incrementLaunchCount() |
+| `premium` | ❌ TODO | Add after purchase |
+| `fcm_token` | ❌ TODO | Add in FCM token refresh |
+| `current_bundle_version` | ❌ TODO | Add on app launch |
+| `country_code` | ❌ TODO | Add on location obtained |
+| `city` | ❌ TODO | Add on location obtained |
+| `text_size` | ❌ TODO | Add on preference change |
+| `play_speed` | ❌ TODO | Add on preference change |
 
-| Property | When Set | Priority |
-|----------|----------|----------|
-| `gender` | Initial setup / settings | High |
-| `language` | Initial setup / settings | High |
-| `premium` | After purchase | High |
-| `apns_token` / `fcm_token` | On token refresh | High |
-| `current_bundle_version` | On app launch | Medium |
-| `country_code` | On location obtained | Medium |
-| `city` | On location obtained | Medium |
-| `text_size` | On preference change | Low |
-| `play_speed` | On preference change | Low |
+### Activity Reading
 
-### Activity Reading (Verify Android Implements)
+| Use Case | Status | Notes |
+|----------|--------|-------|
+| Check lesson completion | ✅ Available | API exists, verify usage |
+| Check prerequisite | ✅ Available | API exists, verify usage |
+| Check if item opened | ✅ Available | API exists, verify usage |
+| Get progress value | ✅ Available | API exists, verify usage |
 
-| Use Case | Query | Priority |
-|----------|-------|----------|
-| Check lesson completion | `getActivity(id, type)?.value == "1"` | High |
-| Check prerequisite | `getActivity(prerequisiteId, logic: .max)` | High |
-| Check if item opened | `getActivity(id, type) != nil` | Medium |
-| Get progress value | `getActivity(id, type, logic: .max)?.value` | Medium |
+### Constants (Property/Log enums)
+
+| Item | Status |
+|------|--------|
+| `Property` object | ✅ Done | android/.../Constants.kt |
+| `LogType` object | ✅ Done | android/.../Constants.kt |
+| `LogActivity` object | ✅ Done | android/.../Constants.kt |
+| `LogValue` object | ✅ Done | android/.../Constants.kt |
