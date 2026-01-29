@@ -389,10 +389,20 @@ import com.personalizationkit.PersonalizationKit
 
 | Use Case | Status | Notes |
 |----------|--------|-------|
-| Check lesson completion | ✅ Available | API exists, verify usage |
-| Check prerequisite | ✅ Available | API exists, verify usage |
-| Check if item opened | ✅ Available | API exists, verify usage |
-| Get progress value | ✅ Available | API exists, verify usage |
+| Check lesson completion | ✅ Done | GroupedListAdapter displays checkmark |
+| Check prerequisite | ✅ Available | API exists |
+| Check if item opened | ✅ Done | GroupedListAdapter shows blue dot for new |
+| Get progress value | ✅ Done | GroupedListAdapter displays percentage |
+
+### Item Interaction Logging
+
+| Item Type | Status | Notes |
+|-----------|--------|-------|
+| quiz | ✅ Done | ItemActionHandler + DynamicContentFragment |
+| lesson | ✅ Done | ItemActionHandler.logItemInteraction() |
+| article | ✅ Done | ItemActionHandler.logItemInteraction() |
+| dynamic | ✅ Done | ItemActionHandler.logItemInteraction() |
+| questionnaire | ✅ Done | ItemActionHandler.logItemInteraction() |
 
 ### Constants (Property/Log enums)
 
