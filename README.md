@@ -349,6 +349,158 @@ import com.personalizationkit.PersonalizationKit
 
 ---
 
+## Activity Logging Patterns by Item Type
+
+This section documents exactly when and how each item type logs progress. Both platforms should follow these patterns identically.
+
+### Progress Value Conventions
+
+| Value | Meaning |
+|-------|---------|
+| `0` or `"0"` | Started / In progress |
+| `0.0-1.0` | Progress percentage (e.g., `0.75` = 75%) |
+| `1` or `"1"` | Completed / Finished |
+| `-1` or `"-1"` | Refused / Skipped |
+| `{optionId}` | Selected option ID (for choices) |
+
+### Item Type: `lesson`
+
+**When logged:** On scroll/navigation progress through lesson content
+
+| Platform | Location | Pattern |
+|----------|----------|---------|
+| iOS | `LessonView.swift` | `Analytics.shared.logActivity(lesson.id, type: "lesson", value: String(min(progress, 1.0)))` |
+| Android | `LessonFragment.kt` | `PersonalizationKit.analytics.logActivity(lessonId, "lesson", progress.toString())` |
+
+**Value:** Progress 0.0-1.0 based on scroll position or page viewed
+
+### Item Type: `quiz`
+
+**When logged:** On each answer selection
+
+| Platform | Location | Pattern |
+|----------|----------|---------|
+| iOS | `DynamicQuiz.swift` | `Analytics.shared.logActivity(quizId, type: "quiz", value: String(progress))` |
+| Android | `DynamicContentFragment.kt` | `PersonalizationKit.analytics.logActivity(itemId, "quiz", value)` |
+
+**Value:**
+- Progress 0.0-1.0 based on questions answered
+- Or `"1"` / `"-1"` for single-question completion/refusal
+
+### Item Type: `dynamic` / `article`
+
+**When logged:** On scroll progress through content
+
+| Platform | Location | Pattern |
+|----------|----------|---------|
+| iOS | `ItemView.swift` | `item.logInteraction(value: String(min(progress, 1)))` via scroll offset |
+| Android | `DynamicContentFragment.kt` | Progress logged on page navigation |
+
+**Value:** Progress 0.0-1.0 based on pages viewed or scroll position
+
+### Item Type: `questionnaire`
+
+**When logged:** Same as `dynamic` - on progress through pages
+
+| Platform | Location | Pattern |
+|----------|----------|---------|
+| iOS | `ItemView.swift` | `item.logInteraction(value: String(progress))` |
+| Android | `DynamicContentFragment.kt` | Handled same as dynamic content |
+
+**Value:** Progress 0.0-1.0 based on pages completed
+
+### Item Type: `switch`
+
+**When logged:** On toggle change
+
+| Platform | Location | Pattern |
+|----------|----------|---------|
+| iOS | `SwitchRow.swift` | `item.logInteraction(value: isOn ? "1" : "0")` |
+| Android | `ItemActionHandler.kt` | `PersonalizationKit.analytics.setUserProperty(item.id, if (isOn) "1" else "0")` |
+
+**Value:** `"1"` for on, `"0"` for off
+
+### Item Type: `segmented`
+
+**When logged:** On option selection
+
+| Platform | Location | Pattern |
+|----------|----------|---------|
+| iOS | `SegmentedRow.swift` | `item.logInteraction(value: chosenOption.id)` |
+| Android | `ItemActionHandler.kt` | `PersonalizationKit.analytics.setUserProperty(item.id, chosenOption.id)` |
+
+**Value:** The selected option's `id`
+
+### Item Type: `subscription`
+
+**When logged:** On successful purchase
+
+| Platform | Location | Pattern |
+|----------|----------|---------|
+| iOS | `PurchaseManager.swift` | `Analytics.shared.logActivity(product.id, type: "subscription", value: "1")` |
+| Android | TODO | Not yet implemented |
+
+**Value:** `"1"` for successful purchase
+
+### Item Type: `audio_recording`
+
+**When logged:** On recording completion
+
+| Platform | Location | Pattern |
+|----------|----------|---------|
+| iOS | `AudioRecordingView.swift` | `Analytics.shared.logActivity("recording_\(itemId)", type: "audio_recording", value: duration)` |
+| Android | TODO | Feature not implemented |
+
+**activityId:** `recording_{itemId}`
+**Value:** Recording duration in seconds
+
+### System Events
+
+| Event | activityId | type | value | iOS | Android |
+|-------|------------|------|-------|-----|---------|
+| App launch | `launch` | `event` | `{count}` | ✅ AppDelegate | ✅ NamazApp.kt |
+| App background | `background` | `event` | - | ✅ SceneDelegate | ✅ NamazApp.kt |
+| App foreground | `foreground` | `event` | - | ✅ SceneDelegate | ✅ NamazApp.kt |
+| App terminated | `terminated` | `event` | - | ✅ SceneDelegate | ⚠️ N/A |
+| Onboarding complete | `onboarding` | `event` | `"1"` | ✅ OnboardingView | ✅ FirstLaunchViewModel |
+| Share app | `share` | `event` | `{itemId}` | ✅ ShareSheet | ✅ ItemActionHandler |
+
+### Reading Progress for UI Display
+
+To show progress indicators (checkmarks, percentages, blue dots):
+
+```swift
+// iOS - in list view
+if let activity = ActivityService.shared.getActivity(activityId: item.id, type: item.type, logic: .max) {
+    if let value = activity.value, let progress = Double(value) {
+        if progress >= 1.0 {
+            // Show checkmark ✓
+        } else if progress > 0 {
+            // Show percentage
+        }
+    }
+} else {
+    // Show blue dot (new/unvisited)
+}
+```
+
+```kotlin
+// Android - in GroupedListAdapter
+val activity = PersonalizationKit.activityService.getActivity(item.id, item.type)
+if (activity != null) {
+    val progress = activity.value?.toDoubleOrNull()
+    if (progress != null && progress >= 1.0 || activity.value == "1") {
+        // Show checkmark ✓
+    } else if (progress != null && progress > 0) {
+        // Show percentage
+    }
+} else {
+    // Show blue dot (new/unvisited)
+}
+```
+
+---
+
 ## Android Parity Status
 
 ### Activity Logging
@@ -366,7 +518,7 @@ import com.personalizationkit.PersonalizationKit
 | `recitation_{trackId}` | `recitation_check` | ❌ TODO | Feature not in Android yet |
 | `{itemId}` | `booking` | ❌ TODO | Feature not in Android yet |
 | `{itemId}` | `cancel_booking` | ❌ TODO | Feature not in Android yet |
-| `share` | `event` | ❌ TODO | Add in share handler |
+| `share` | `event` | ✅ Done | ItemActionHandler + WebViewFragment |
 | `go_to_settings_enable_location` | `event` | ❌ TODO | Low priority |
 | `recommended_item_selected` | `event` | ❌ TODO | Low priority |
 
@@ -396,13 +548,17 @@ import com.personalizationkit.PersonalizationKit
 
 ### Item Interaction Logging
 
-| Item Type | Status | Notes |
-|-----------|--------|-------|
-| quiz | ✅ Done | ItemActionHandler + DynamicContentFragment |
-| lesson | ✅ Done | ItemActionHandler.logItemInteraction() |
-| article | ✅ Done | ItemActionHandler.logItemInteraction() |
-| dynamic | ✅ Done | ItemActionHandler.logItemInteraction() |
-| questionnaire | ✅ Done | ItemActionHandler.logItemInteraction() |
+| Item Type | Status | Progress Tracking | Notes |
+|-----------|--------|-------------------|-------|
+| quiz | ✅ Done | Per-question | DynamicContentFragment.onQuizInteraction() |
+| lesson | ✅ Done | Scroll-based 0.0-1.0 | LessonFragment with scroll listener |
+| article | ✅ Done | Scroll-based 0.0-1.0 | WebViewFragment with scroll listener |
+| dynamic | ✅ Done | Page-based 0.0-1.0 | DynamicContentFragment.logProgress() |
+| questionnaire | ✅ Done | Page-based 0.0-1.0 | DynamicContentFragment.logProgress() |
+| switch | ✅ Done | "1" / "0" | ItemActionHandler.onSwitchChanged() |
+| segmented | ✅ Done | Selected option ID | ItemActionHandler.onSegmentChanged() |
+| subscription | ❌ TODO | "1" on purchase | Add after billing implementation |
+| audio_recording | ❌ TODO | Duration in seconds | Feature not implemented |
 
 ### Constants (Property/Log enums)
 
@@ -412,3 +568,20 @@ import com.personalizationkit.PersonalizationKit
 | `LogType` object | ✅ Done | android/.../Constants.kt |
 | `LogActivity` object | ✅ Done | android/.../Constants.kt |
 | `LogValue` object | ✅ Done | android/.../Constants.kt |
+
+### Implementation Files Reference
+
+| Feature | iOS File | Android File |
+|---------|----------|--------------|
+| App lifecycle events | SceneDelegate.swift | NamazApp.kt |
+| Launch count | AppDelegate.swift | NamazApp.kt |
+| Lesson progress | LessonController.swift | LessonFragment.kt |
+| Article progress | WebController.swift | WebViewFragment.kt |
+| Dynamic/questionnaire | ItemView.swift | DynamicContentFragment.kt |
+| Quiz interactions | DynamicQuiz.swift | DynamicContentFragment.kt |
+| Switch/segment changes | UIViewController+Navigation.swift | ItemActionHandler.kt |
+| Item interaction (initial) | Item.swift | ItemActionHandler.kt |
+| Share activity | WebController.swift | ItemActionHandler.kt, WebViewFragment.kt |
+| Onboarding | OnboardingView.swift | FirstLaunchViewModel.kt |
+| Property constants | AppDelegate.swift (Property enum) | Constants.kt (Property object) |
+| Log type constants | AppDelegate.swift (Log enum) | Constants.kt (LogType object) |
