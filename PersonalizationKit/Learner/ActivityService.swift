@@ -62,6 +62,19 @@ public class ActivityService {
     
     private lazy var analyticsUrl = "\(StorageDelegate.learnerStorage.serverUrl)/analytics/\(StorageDelegate.learnerStorage.activtyLogCollectionName)"
     private let userDefaultsKey = "engagement_history"
+
+    /// File URL for engagement history (moved out of UserDefaults to avoid 4MB limit).
+    private lazy var historyFileURL: URL? = {
+        let fm = FileManager.default
+        guard let appSupport = fm.urls(for: .applicationSupportDirectory, in: .userDomainMask).first else {
+            return nil
+        }
+        let dir = appSupport.appendingPathComponent("PersonalizationKit", isDirectory: true)
+        if !fm.fileExists(atPath: dir.path) {
+            try? fm.createDirectory(at: dir, withIntermediateDirectories: true)
+        }
+        return dir.appendingPathComponent("engagement_history.json")
+    }()
     
     public func kickstartActivityService() {
         
@@ -239,26 +252,46 @@ public class ActivityService {
             print(#function, "Error localActivitiesHistory is nil")
             return
         }
-        
+
+        guard let fileURL = historyFileURL else {
+            print(#function, "Error: could not determine history file URL")
+            return
+        }
+
         let encoder = JSONEncoder()
-        
+
         do {
             let data = try encoder.encode(localActivitiesHistory)
-            StorageDelegate.learnerStorage.store(data, forKey: userDefaultsKey)
+            try data.write(to: fileURL, options: .atomic)
         } catch {
-            print(#function, "Error encoding localActivitiesHistory: \(error)")
+            print(#function, "Error encoding/writing localActivitiesHistory: \(error)")
         }
     }
     
     private func retrieveLocalHistory() -> [ActivityLog]? {
-        guard let localHistoryData = StorageDelegate.learnerStorage.retrieve(forKey: userDefaultsKey) as? Data else {
+        let decoder = JSONDecoder()
+
+        // Try file-based storage first
+        if let fileURL = historyFileURL,
+           let data = try? Data(contentsOf: fileURL),
+           let history = try? decoder.decode([ActivityLog].self, from: data) {
+            return history
+        }
+
+        // Fall back to UserDefaults (one-time migration from old storage)
+        guard let legacyData = StorageDelegate.learnerStorage.retrieve(forKey: userDefaultsKey) as? Data else {
             return nil
         }
-        
-        let decoder = JSONDecoder()
-        
+
         do {
-            return try decoder.decode([ActivityLog].self, from: localHistoryData)
+            let history = try decoder.decode([ActivityLog].self, from: legacyData)
+            // Migrate to file-based storage and free UserDefaults
+            if let fileURL = historyFileURL {
+                try? legacyData.write(to: fileURL, options: .atomic)
+                StorageDelegate.learnerStorage.remove(forKey: userDefaultsKey)
+                print("Migrated engagement_history (\(legacyData.count / 1024)KB) from UserDefaults to file storage")
+            }
+            return history
         } catch {
             print(#function, "Error decoding local history: \(error)")
             return nil
