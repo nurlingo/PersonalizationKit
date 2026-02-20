@@ -170,7 +170,7 @@ object PersonalizationKit {
      *
      * @param context Application context
      * @param buildVersion Current app build version
-     * @param serverUrl Server URL for remote sync (e.g., "https://namazlive.herokuapp.com")
+     * @param serverUrl Server URL for remote sync (e.g., "https://backend.namaz.live")
      * @param learnerCollectionName Collection name for learner data
      * @param analyticsCollectionName Collection name for analytics data
      * @param apiKey API key for authentication

@@ -43,7 +43,7 @@ class ActivityService(
 
     /**
      * Configure remote sync.
-     * @param serverUrl Base server URL (e.g., "https://namazlive.herokuapp.com")
+     * @param serverUrl Base server URL (e.g., "https://backend.namaz.live")
      * @param collectionName Analytics collection name
      * @param apiKey API key for authentication
      */
