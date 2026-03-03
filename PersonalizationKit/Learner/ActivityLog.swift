@@ -20,6 +20,7 @@ public struct ActivityLog: Codable, Identifiable {
     let startDateString: String?
     let completionDateString: String?
     let buildVersion: String?
+    let sessionNumber: Int?
     
     var startDate: Date? {
         guard let startDateString = startDateString else {
@@ -44,6 +45,7 @@ public struct ActivityLog: Codable, Identifiable {
         case startDateString = "start_date"
         case completionDateString = "completion_date"
         case buildVersion = "build_version"
+        case sessionNumber = "session_number"
     }
     
     
@@ -52,7 +54,9 @@ public struct ActivityLog: Codable, Identifiable {
           value: String?,
           startDate: Date,
           completionDate: Date = Date(),
-          buildVersion: String?) {
+          buildVersion: String?,
+          sessionNumber: Int?
+    ){
             
         let dateFormatter: DateFormatter = {
             let dateFormatter = DateFormatter()
@@ -78,6 +82,7 @@ public struct ActivityLog: Codable, Identifiable {
         self.startDateString = startDateString
         self.completionDateString = completionDateString
         self.buildVersion = buildVersion
+        self.sessionNumber = sessionNumber
     }
 
 }

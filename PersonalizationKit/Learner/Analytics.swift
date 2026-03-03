@@ -29,18 +29,18 @@ public class Analytics: NSObject {
     public func incrementLaunchCount() {
         let incrementedLauchCount = launchCount + 1
         StorageDelegate.learnerStorage.store(incrementedLauchCount, forKey: launchCountKey)
-        logActivity("launch", type: "app", value: String(incrementedLauchCount), startDate: Date())
+        logActivity("launch", type: "event", value: String(incrementedLauchCount), startDate: Date())
         setUserProperty(launchCountKey, value: String(launchCount))
     }
     
     
-    public func logActivity(_ activityId: String, type: String, value: String?, startDate: Date, completionDate: Date = Date()) {
+    public func logActivity(_ activityId: String, type: String, value: String? = nil, startDate: Date = Date(), completionDate: Date = Date()) {
         #if DEBUG
-        print("log:", type, "->", activityId, "->", value?.prefix(30) ?? "nil", "| startDate:", startDate)
+        print("📟 log:", type, "->", activityId, "->", value?.prefix(30) ?? "nil", "| startDate:", startDate)
         #endif
-        
-        if #available(iOS 10, *) {
-            if let activityLog = ActivityLog(activityId: activityId, type: type, value: value, startDate: startDate, completionDate: completionDate, buildVersion: StorageDelegate.learnerStorage.currentAppVersion) {
+
+        if #available(iOS 10.0, *) {
+            if let activityLog = ActivityLog(activityId: activityId, type: type, value: value, startDate: startDate, completionDate: completionDate, buildVersion: StorageDelegate.learnerStorage.currentAppVersion, sessionNumber: StorageDelegate.learnerStorage.currentSessionNumber) {
                 ActivityService.shared.logActivityToHistory(activityLog)
             }
         }
@@ -48,10 +48,18 @@ public class Analytics: NSObject {
     
     public func setUserProperty(_ property: String, value: Any) {
         #if DEBUG
-        print("setUserProperty:", property, "| value:", "\(value)")
+        print("💼 setUserProperty:", property, "| value:", "\(value)")
         #endif
         
-        LearnerService.shared.setLearnerProperty("\(value)", forKey: property)
+        if let value = value as? Bool {
+            LearnerService.shared.setLearnerProperty(value ? "1" : "0", forKey: property)
+        } else {
+            LearnerService.shared.setLearnerProperty("\(value)", forKey: property)
+        }
+        
     }
     
+    public func getUserProperty(_ property: String) -> String? {
+        LearnerService.shared.localLearner?.getProperty(property)
+    }
 }
