@@ -363,6 +363,73 @@ public class ActivityService {
         return localActivityHistory
     }
     
+    /// Computes letter mastery from local sound/shape quiz logs.
+    @available(iOS 13.0, *)
+    public func getAssessmentResults() async throws -> Assessment {
+        let soundLogs = getAllInstances(type: "sound")
+        let shapeLogs = getAllInstances(type: "shape")
+
+        let alphabet = ["ا","ب","ت","ث","ج","ح","خ","د","ذ","ر","ز","س","ش","ص","ض","ط","ظ","ع","غ","ف","ق","ك","ل","م","ن","ھ","و","ي"]
+
+        var performance: [String: [String: [Bool]]] = [:]
+        for letter in alphabet {
+            performance[letter] = ["sound": [], "shape": []]
+        }
+
+        for log in soundLogs {
+            let letter = log.activityId
+            guard performance[letter] != nil else { continue }
+            performance[letter]?["sound"]?.append(letter == log.value)
+        }
+
+        for log in shapeLogs {
+            let letter = log.activityId
+            guard performance[letter] != nil else { continue }
+            performance[letter]?["shape"]?.append(letter == log.value)
+        }
+
+        var letterMastery: [LetterMastery] = []
+        var engagementLevel = 0
+
+        for letter in alphabet {
+            let soundResults = performance[letter]?["sound"] ?? []
+            let shapeResults = performance[letter]?["shape"] ?? []
+
+            engagementLevel += soundResults.count + shapeResults.count
+
+            let soundScore = Self.weightedMastery(soundResults)
+            let shapeScore = Self.weightedMastery(shapeResults)
+
+            letterMastery.append(LetterMastery(
+                letter: letter,
+                sound: soundScore,
+                shape: shapeScore,
+                soundExercises: soundResults.count,
+                shapeExercises: shapeResults.count
+            ))
+        }
+
+        return Assessment(letterMastery: letterMastery, engagementLevel: engagementLevel)
+    }
+
+    /// Weighted average of last 5 attempts (recent attempts weighted more).
+    private static func weightedMastery(_ results: [Bool]) -> Double {
+        let recent = results.suffix(5)
+        guard !recent.isEmpty else { return 0 }
+
+        var totalWeight: Double = 0
+        var weightedSum: Double = 0
+        let step = 1.0 / Double(recent.count)
+
+        for (i, correct) in recent.enumerated() {
+            let weight = 1.0 + step * Double(i)
+            totalWeight += weight
+            weightedSum += correct ? weight : 0
+        }
+
+        return (weightedSum / totalWeight) * 100
+    }
+
     /// Returns a merged profile of learner.properties + [activityId: maxValue]
     public func getSummary() -> [String: String] {
         
